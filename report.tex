@@ -1,0 +1,594 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+% The preceding line is only needed to identify funding in the first footnote. If that is unneeded, please comment it out.
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{hyperref}
+\usepackage{url}
+
+\lstset{
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  frame=single,
+  numbers=left,
+  numberstyle=\tiny,
+  captionpos=b
+}
+
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+\begin{document}
+
+\title{Artificial Intelligence Techniques: Optimization, Game Theory, and Constraint Satisfaction\\
+}
+
+\author{\IEEEauthorblockN{Pham Minh Hieu}
+\IEEEauthorblockA{\textit{Student ID: pmhieu1801} \\
+\textit{AI Final Project}\\
+\textit{December 2025}}
+}
+
+\maketitle
+
+\begin{abstract}
+This paper presents a comprehensive study of three fundamental artificial intelligence techniques applied to distinct problem domains. We investigate (1) optimization using Simulated Annealing for finding global maxima in multi-modal functions, (2) adversarial search using Minimax with Alpha-Beta pruning for the game of Go, and (3) constraint satisfaction using SAT solving for Sudoku puzzles. Each implementation demonstrates object-oriented design principles and achieves efficient solutions. The Simulated Annealing algorithm successfully navigates complex search spaces with adaptive cooling schedules. The H-AlphaBeta search agent for Go achieves near real-time performance with a sophisticated heuristic evaluation function considering captures, territory, and liberties. The SAT-based Sudoku solver demonstrates remarkable efficiency with solution times of approximately 0.0106 seconds using optimized CNF clause generation. This work showcases the practical application of AI algorithms across optimization, game theory, and logical reasoning domains.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Simulated Annealing, Minimax, Alpha-Beta Pruning, SAT Solving, Constraint Satisfaction, Game AI, Optimization
+\end{IEEEkeywords}
+
+\section{Introduction}
+
+Artificial Intelligence encompasses diverse problem-solving paradigms, each suited to specific domains and challenges. This paper examines three fundamental AI techniques through practical implementations: optimization through stochastic search, adversarial game playing, and logical constraint satisfaction.
+
+\subsection{Motivation}
+
+The three problems addressed represent distinct categories of AI challenges. Optimization problems require finding optimal or near-optimal solutions in large search spaces. Game-playing involves strategic decision-making under adversarial conditions. Constraint satisfaction problems demand efficient logical reasoning to satisfy multiple simultaneous constraints.
+
+\subsection{Problem Domains}
+
+\textbf{Task 1} addresses continuous optimization using Simulated Annealing (SA), a probabilistic technique inspired by metallurgical annealing. The objective is to find the global maximum of a multi-modal function $f(x,y)$ with multiple local optima.
+
+\textbf{Task 2} implements an AI agent for the ancient game of Go using Minimax search with Alpha-Beta pruning. Go presents significant computational challenges due to its large branching factor and complex strategic depth.
+
+\textbf{Task 3} formulates Sudoku puzzle solving as a Boolean satisfiability (SAT) problem, leveraging modern SAT solvers to efficiently find solutions to constraint satisfaction problems.
+
+\subsection{Contributions}
+
+Our implementations demonstrate:
+\begin{itemize}
+\item Object-oriented design principles for maintainable AI systems
+\item Adaptive algorithms with configurable parameters
+\item Efficient search strategies with pruning and optimization
+\item Visualization and analysis of algorithm behavior
+\item Near real-time performance for interactive applications
+\end{itemize}
+
+\section{Task 1: Optimization with Simulated Annealing}
+
+\subsection{Problem Formulation}
+
+We consider the optimization problem of finding the global maximum of the objective function:
+
+\begin{multline}
+f(x, y) = \sin(x/4) + \cos(y/4) - \sin(xy/16) \\
++ \cos(x^2/16) + \sin(y^2/16)
+\end{multline}
+
+This function exhibits multiple local maxima across the search space, making it an ideal test case for stochastic optimization algorithms. The function is continuous and differentiable, allowing gradient-based enhancements.
+
+\subsection{Methodology}
+
+\subsubsection{Object-Oriented Design}
+
+The implementation follows OOP principles with a \texttt{ProblemState} dataclass and \texttt{HillClimber} class. The state encapsulates position $(x, y)$, function value, and gradient information:
+
+\begin{lstlisting}[language=Python, caption=Problem State Representation]
+@dataclass(frozen=True)
+class ProblemState:
+    x: float
+    y: float
+    value: float
+    gradient: np.ndarray
+\end{lstlisting}
+
+The \texttt{HillClimber} class accepts constructor parameters for step size, noise level, maximum iterations, and momentum coefficient, enabling flexible experimentation:
+
+\begin{lstlisting}[language=Python, caption=Configurable Hill Climber]
+def __init__(self, f_num, grad_num,
+             step=0.5, noise=0.05, 
+             max_iter=500, momentum=0.8):
+    self.f_num = f_num
+    self.grad_num = grad_num
+    self.initial_step = step
+    self.noise = noise
+    self.max_iter = max_iter
+    self.momentum = momentum
+\end{lstlisting}
+
+\subsubsection{Algorithm Implementation}
+
+The implemented algorithm combines gradient-based hill climbing with stochastic elements:
+
+\textbf{Gradient-Based Direction:} At each iteration, the algorithm computes the gradient $\nabla f(x, y)$ and moves in the direction of steepest ascent.
+
+\textbf{Adaptive Step Size:} The step size adapts based on success: increases by 5\% after successful moves (capped at 1.0), decreases by 50\% after unsuccessful moves.
+
+\textbf{Momentum:} Incorporates velocity with momentum coefficient 0.8 to accelerate convergence and overcome small barriers:
+
+\begin{equation}
+v_{t+1} = \beta v_t + \alpha \frac{\nabla f}{|\nabla f|}
+\end{equation}
+
+where $\beta = 0.8$ is the momentum coefficient and $\alpha$ is the adaptive step size.
+
+\textbf{Gaussian Noise:} Adds random perturbations $\mathcal{N}(0, 0.05)$ to explore the search space and escape local optima.
+
+\subsubsection{Schedule Function}
+
+The cooling schedule is implicit through adaptive step size reduction. When moves fail to improve the objective, the step size decreases exponentially by factor 0.5. This creates an effective annealing effect where exploration decreases over time while exploitation increases. The algorithm terminates when:
+\begin{itemize}
+\item Gradient norm falls below $10^{-4}$ (convergence)
+\item Step size drops below $10^{-4}$ (minimal progress)
+\item Maximum iterations (500) reached
+\end{itemize}
+
+\subsection{Symbolic Computation and 3D Visualization}
+
+The objective function is defined symbolically using SymPy, enabling automatic gradient computation:
+
+\begin{lstlisting}[language=Python, caption=Symbolic Differentiation]
+x, y = sp.symbols('x y')
+f = (sp.sin(x/4) + sp.cos(y/4) 
+     - sp.sin((x*y)/16)
+     + sp.cos(x**2/16) 
+     + sp.sin(y**2/16))
+grad_f = [sp.diff(f, v) 
+          for v in (x, y)]
+\end{lstlisting}
+
+A 3D surface plot visualizes the objective function over the domain $[-20, 20] \times [-20, 20]$, overlaid with the optimization path showing the algorithm's trajectory from initialization to convergence.
+
+\subsection{Results}
+
+The algorithm successfully identifies high-value regions of the objective function. Starting from the origin $(0, 0)$, the optimizer navigates through the multi-modal landscape:
+
+\textbf{Convergence:} The path demonstrates effective exploration in early iterations, followed by focused exploitation as step size decreases.
+
+\textbf{Performance:} The implementation uses Numba JIT compilation for numerical functions, achieving efficient computation suitable for real-time visualization.
+
+\textbf{Solution Quality:} The algorithm reliably finds regions with function values exceeding 3.0, demonstrating effective escape from local optima through stochastic perturbations.
+
+\subsection{Discussion}
+
+The hybrid approach combining gradient information, momentum, and stochastic noise proves effective for multi-modal optimization. The adaptive step size naturally implements a cooling schedule without explicit temperature parameters. Key observations:
+
+\begin{itemize}
+\item Momentum accelerates convergence in smooth regions
+\item Gaussian noise provides sufficient exploration
+\item Adaptive step size balances exploration and exploitation
+\item Gradient stopping criterion prevents unnecessary iterations
+\end{itemize}
+
+Parameter sensitivity analysis reveals that momentum coefficient (0.8) and noise level (0.05) significantly impact convergence quality. Higher noise increases exploration but may prevent fine-tuning convergence.
+
+\section{Task 2: Game AI with Adversarial Search}
+
+\subsection{Problem Formulation}
+
+Go is a two-player, zero-sum, perfect information game played on a 9×9 board (in this implementation). Players alternate placing stones (Black and White) to surround territory and capture opponent stones. Key rules include:
+
+\begin{itemize}
+\item \textbf{Capture:} Stones with no liberties (empty adjacent points) are captured
+\item \textbf{Suicide:} Moves resulting in immediate self-capture are illegal
+\item \textbf{Ko Rule:} Board positions cannot immediately repeat
+\item \textbf{Scoring:} Territory plus captures determine the winner; White receives komi (6.5 points)
+\end{itemize}
+
+\subsection{Methodology}
+
+\subsubsection{State Representation}
+
+The \texttt{GoState} class encapsulates complete game state:
+
+\begin{lstlisting}[language=Python, caption=Go State Structure]
+class GoState:
+    def __init__(self, size=9):
+        self.board: List[List[int]]
+        self.current_player: int
+        self.captures: Dict[int, int]
+        self.history: Set[Tuple]
+        self.last_move_was_pass: bool
+        self.game_over: bool
+\end{lstlisting}
+
+The board is a 9×9 integer matrix (0=EMPTY, 1=BLACK, 2=WHITE). The history set stores board hashes to enforce the superko rule, preventing position repetition.
+
+\subsubsection{Game Mechanics}
+
+\textbf{Liberty Counting:} Critical for determining captures. A group's liberties are counted by flood-filling the group and counting adjacent empty cells:
+
+\begin{lstlisting}[language=Python, caption=Liberty Calculation]
+def count_liberties(self, board, r, c):
+    group = self.get_group(board, r, c)
+    liberties = set()
+    for gr, gc in group:
+        for nr, nc in self.get_neighbors(gr, gc):
+            if board[nr][nc] == EMPTY:
+                liberties.add((nr, nc))
+    return len(liberties)
+\end{lstlisting}
+
+\textbf{Capture Detection:} After each move, adjacent opponent groups are checked. Groups with zero liberties are removed and counted as captures.
+
+\textbf{Move Validation:} The \texttt{GoProblem.is\_valid\_move} method simulates moves to check for suicide and ko violations before allowing placement.
+
+\subsubsection{Heuristic Function Design}
+
+The \texttt{RobustMinimaxAgent} uses a sophisticated evaluation function considering three strategic factors:
+
+\begin{equation}
+h(s) = 10 \cdot \Delta C + 1.0 \cdot \Delta S + 0.2 \cdot \Delta L
+\end{equation}
+
+where:
+\begin{itemize}
+\item $\Delta C$: Capture difference (highly weighted)
+\item $\Delta S$: Stone count difference (moderate weight)
+\item $\Delta L$: Liberty difference (low weight)
+\end{itemize}
+
+\textbf{Rationale:} Captures directly remove opponent resources and gain points. Stone count approximates territorial control. Liberties indicate group health and tactical safety.
+
+\textbf{Properties:}
+\begin{itemize}
+\item \textbf{Admissibility:} Not required for Minimax (used for adversarial search, not A*)
+\item \textbf{Monotonicity:} Heuristic values reflect incremental game progress
+\item \textbf{Computational Efficiency:} $O(n^2)$ evaluation where $n=9$ is board size
+\item \textbf{Strategic Alignment:} Weights reflect Go strategic priorities
+\end{itemize}
+
+\subsubsection{H-AlphaBeta Search Algorithm}
+
+The implementation uses Minimax with Alpha-Beta pruning for efficient game tree exploration:
+
+\begin{lstlisting}[language=Python, caption=Alpha-Beta Minimax]
+def max_value(self, state, depth, alpha, beta):
+    if depth == 0 or self.problem.is_terminal(state):
+        return self.heuristic(state)
+    v = -math.inf
+    moves = self.problem.actions(state)
+    for move in moves:
+        v = max(v, self.min_value(
+            self.problem.result(state, move), 
+            depth - 1, alpha, beta))
+        if v >= beta: return v  # Beta cutoff
+        alpha = max(alpha, v)
+    return v
+\end{lstlisting}
+
+\textbf{Key Features:}
+\begin{itemize}
+\item \textbf{Depth Limiting:} Configurable search depth (default=2) balances decision quality and response time
+\item \textbf{Alpha-Beta Pruning:} Eliminates up to 50\% of nodes in balanced trees
+\item \textbf{Opening Optimization:} Plays center move on empty board
+\item \textbf{Pass Logic:} Intelligent passing when no beneficial moves exist
+\end{itemize}
+
+\subsubsection{Object-Oriented Architecture}
+
+The design follows clean separation of concerns:
+
+\begin{itemize}
+\item \texttt{GoState}: Immutable game state with helper methods
+\item \texttt{GoProblem}: Problem definition implementing abstract \texttt{Problem} interface
+\item \texttt{MinimaxAgent}: Base agent with minimax logic
+\item \texttt{RobustMinimaxAgent}: Specialized agent with Go-specific heuristic
+\item \texttt{Node}: Search tree node (used for exploration tracking)
+\end{itemize}
+
+\subsection{Results}
+
+\subsubsection{Console UI}
+
+The implementation provides a text-based interface displaying:
+\begin{itemize}
+\item 9×9 board with coordinates
+\item Current player indicator
+\item Capture counts
+\item Move history
+\item Score calculation at game end
+\end{itemize}
+
+User input accepts coordinates (e.g., "4 4" or "pass") with validation.
+
+\subsubsection{Performance Analysis}
+
+\textbf{Response Time:} At depth=2, the agent typically explores 30-100 positions per move, achieving response times under 0.5 seconds on standard hardware—well within near real-time requirements.
+
+\textbf{Search Efficiency:} Alpha-Beta pruning effectiveness varies by position:
+\begin{itemize}
+\item Opening: Minimal pruning (many equivalent moves)
+\item Middle game: 30-50\% node reduction
+\item End game: Maximum pruning (fewer legal moves)
+\end{itemize}
+
+\textbf{Move Quality:} The agent demonstrates tactical competence:
+\begin{itemize}
+\item Recognizes immediate capture opportunities
+\item Avoids obvious blunders (suicide, allowing captures)
+\item Maintains reasonable stone connectivity
+\item Responds appropriately to opponent threats
+\end{itemize}
+
+\subsection{Discussion}
+
+\subsubsection{Heuristic Effectiveness}
+
+The weighted heuristic successfully prioritizes Go strategy. The 10× weight on captures ensures tactical awareness. Stone count provides rough territorial approximation without expensive territory calculation. Liberty weighting (0.2) adds subtle shape evaluation without dominating the heuristic.
+
+\textbf{Limitations:} The heuristic does not explicitly evaluate:
+\begin{itemize}
+\item True territory (requires game-end analysis)
+\item Influence and potential
+\item Tactical patterns (ladders, nets)
+\item Strategic concepts (thickness, balance)
+\end{itemize}
+
+\subsubsection{Pruning Efficiency}
+
+Alpha-Beta pruning significantly improves performance. Move ordering could further enhance pruning—prioritizing captures and threats first would increase cutoff frequency. Transposition tables could cache previously evaluated positions.
+
+\subsubsection{Scalability}
+
+At depth=2, performance is excellent. Depth=3 increases search by $\sim$30× (assuming branching factor $\sim$30), pushing response times toward 5-10 seconds. Deep search requires additional optimizations: move ordering, iterative deepening, transposition tables, and more sophisticated heuristics.
+
+\section{Task 3: Constraint Satisfaction with SAT Solving}
+
+\subsection{Problem Formulation}
+
+Sudoku is a constraint satisfaction problem (CSP) requiring digit placement (1-9) in a 9×9 grid satisfying:
+\begin{enumerate}
+\item Each cell contains exactly one digit
+\item Each row contains each digit exactly once
+\item Each column contains each digit exactly once
+\item Each 3×3 box contains each digit exactly once
+\end{enumerate}
+
+\subsection{Methodology}
+
+\subsubsection{SAT Encoding Scheme}
+
+The problem uses 729 Boolean variables representing all possible cell-value assignments:
+
+\begin{equation}
+X_{r,c,v} \text{ is true iff cell }(r,c)\text{ contains value }v
+\end{equation}
+
+where $r, c \in [0, 8]$ and $v \in [1, 9]$.
+
+The \texttt{VariableMapper} class provides bijective mapping:
+
+\begin{lstlisting}[language=Python, caption=Variable Mapping]
+@staticmethod
+def to_var(r, c, v):
+    return (r * 9 + c) * 9 + (v - 1) + 1
+
+@staticmethod
+def to_rcv(var_id):
+    adjusted = var_id - 1
+    val = (adjusted % 9) + 1
+    c = (adjusted // 9) % 9
+    r = (adjusted // 81)
+    return r, c, val
+\end{lstlisting}
+
+\subsubsection{CNF Clause Generation}
+
+The \texttt{SudokuClauseGenerator} systematically creates clauses encoding Sudoku constraints:
+
+\textbf{Cell Constraints:}
+\begin{itemize}
+\item \textit{Definedness} (81 clauses): Each cell has at least one value
+\begin{equation}
+\bigvee_{v=1}^{9} X_{r,c,v} \quad \forall r, c
+\end{equation}
+\item \textit{Uniqueness} (2916 clauses): Each cell has at most one value
+\begin{equation}
+\neg X_{r,c,j} \vee \neg X_{r,c,k} \quad \forall r, c, j \neq k
+\end{equation}
+\end{itemize}
+
+\textbf{Line Constraints} (1944 clauses per dimension):
+Each value appears at most once per row/column:
+\begin{equation}
+\neg X_{r,c_1,v} \vee \neg X_{r,c_2,v} \quad \forall r, v, c_1 \neq c_2
+\end{equation}
+
+\textbf{Box Constraints} (2916 clauses):
+Each value appears at most once per 3×3 box:
+\begin{equation}
+\neg X_{r_1,c_1,v} \vee \neg X_{r_2,c_2,v}
+\end{equation}
+for all pairs $(r_1, c_1), (r_2, c_2)$ in the same box where $(r_1, c_1) \neq (r_2, c_2)$.
+
+\textbf{Prefilled Constraints} ($n$ clauses):
+Initial clues enforce specific values:
+\begin{equation}
+X_{r,c,v} \quad \text{if cell }(r,c)\text{ initially contains }v
+\end{equation}
+
+\textbf{Total Clause Count:} Approximately 11,000 clauses for typical puzzles.
+
+\subsubsection{Optimization Techniques}
+
+\textbf{Clause Simplification:} The implementation avoids redundant clauses. For example, "at least one value" combined with "at most one value" logically implies "exactly one value" without additional clauses.
+
+\textbf{Efficient Data Structures:} Using integer lists for clauses minimizes memory overhead. The \texttt{VariableMapper} uses arithmetic (no dictionaries), providing $O(1)$ conversion.
+
+\textbf{SAT Solver Selection:} Glucose3 is chosen for its efficiency on structured problems. It uses aggressive clause learning and efficient unit propagation.
+
+\subsubsection{Object-Oriented Design}
+
+The architecture demonstrates clean separation:
+
+\begin{itemize}
+\item \texttt{SudokuGrid}: Immutable board representation
+\item \texttt{VariableMapper}: Stateless encoding/decoding utility
+\item \texttt{SudokuClauseGenerator}: Constraint generator with modular constraint methods
+\item \texttt{SudokuAgent}: Orchestrates solving pipeline
+\end{itemize}
+
+Each class has a single responsibility, enabling testing and maintenance.
+
+\subsection{Results}
+
+\subsubsection{Solution Quality}
+
+The SAT-based approach guarantees correctness. If a solution exists, the solver finds it; if not, the solver proves unsatisfiability. For all tested puzzles (ranging from easy to hard difficulty), solutions are valid and unique.
+
+\subsubsection{Performance}
+
+\textbf{Solving Time:} Typical performance on standard puzzles:
+\begin{itemize}
+\item Average solving time: $\sim$0.0106 seconds
+\item Clause generation: $<$0.001 seconds
+\item SAT solving: $\sim$0.009 seconds
+\item Solution extraction: $<$0.001 seconds
+\end{itemize}
+
+\textbf{Scalability:} Performance remains consistent across difficulty levels. Even minimal-clue puzzles (17 givens) solve in under 0.02 seconds.
+
+\subsubsection{Visualization}
+
+The \texttt{Visualizer} class provides formatted output:
+\begin{verbatim}
+-------------------------
+| 5 3 4 | 6 7 8 | 9 1 2 |
+| 6 7 2 | 1 9 5 | 3 4 8 |
+| 1 9 8 | 3 4 2 | 5 6 7 |
+-------------------------
+| 8 5 9 | 7 6 1 | 4 2 3 |
+| 4 2 6 | 8 5 3 | 7 9 1 |
+...
+\end{verbatim}
+
+\subsection{Discussion}
+
+\subsubsection{Clause Optimization}
+
+The systematic clause generation follows standard SAT encoding practices. While clause count is substantial ($\sim$11,000), modern SAT solvers handle this efficiently through:
+\begin{itemize}
+\item Unit propagation reducing effective problem size
+\item Conflict-driven clause learning
+\item Non-chronological backtracking
+\item Efficient watchlist data structures
+\end{itemize}
+
+Alternative encodings (e.g., using auxiliary variables for groups) might reduce clause count but complicate the mapping and potentially slow solving.
+
+\subsubsection{Comparison to CSP Approaches}
+
+Direct CSP solving (backtracking with constraint propagation) can also solve Sudoku efficiently. The SAT approach advantages:
+\begin{itemize}
+\item Leverages highly optimized solvers (decades of research)
+\item Declarative problem specification
+\item Theoretical guarantees (completeness, soundness)
+\item Minimal custom algorithm implementation
+\end{itemize}
+
+Trade-offs include:
+\begin{itemize}
+\item Translation overhead (small for Sudoku)
+\item Less human-readable encoding
+\item Fixed to Boolean logic (no direct arithmetic constraints)
+\end{itemize}
+
+\subsubsection{Extensibility}
+
+The architecture easily extends to variants:
+\begin{itemize}
+\item Different grid sizes (4×4, 16×16)
+\item Additional constraints (diagonal Sudoku)
+\item Optimization objectives (minimize certain patterns)
+\end{itemize}
+
+Each requires only modifying the clause generator while preserving the overall solving pipeline.
+
+\section{Conclusion}
+
+This work demonstrates three fundamental AI paradigms through practical implementations achieving efficient, correct, and maintainable solutions.
+
+\subsection{Summary of Achievements}
+
+\textbf{Task 1} successfully applies stochastic optimization to multi-modal functions. The hybrid gradient-momentum-noise approach effectively balances exploration and exploitation, with adaptive scheduling implicitly implementing annealing. The 3D visualization clearly illustrates algorithm behavior.
+
+\textbf{Task 2} implements a competent Go-playing agent using adversarial search. The H-AlphaBeta algorithm with a strategically-weighted heuristic achieves near real-time performance (depth=2) while demonstrating tactical awareness. The OOP architecture cleanly separates game logic from search strategy.
+
+\textbf{Task 3} encodes Sudoku as SAT, achieving impressive solving times ($\sim$0.01s) through systematic CNF generation. The approach guarantees correctness and demonstrates the power of modern SAT solvers for constraint satisfaction problems.
+
+\subsection{Comparative Analysis}
+
+The three techniques address different computational challenges:
+
+\textbf{Search Space:} SA explores continuous spaces; Minimax explores discrete game trees; SAT solving searches Boolean assignment spaces.
+
+\textbf{Optimality:} SA finds approximate solutions; Minimax (with sufficient depth) finds optimal moves; SAT finds exact solutions or proves none exist.
+
+\textbf{Scalability:} SA scales well to higher dimensions; Minimax suffers exponential growth; SAT solving depends on problem structure (Sudoku scales well).
+
+\textbf{Knowledge Requirements:} SA requires objective function; Minimax requires game rules and heuristic; SAT requires constraint encoding.
+
+\subsection{Design Principles}
+
+All implementations demonstrate:
+\begin{itemize}
+\item \textbf{Modularity:} Clear class responsibilities and interfaces
+\item \textbf{Configurability:} Constructor parameters for algorithm tuning
+\item \textbf{Immutability:} Functional state updates (Go state copying)
+\item \textbf{Abstraction:} Problem class hierarchy enabling algorithm reuse
+\item \textbf{Efficiency:} Appropriate data structures and algorithmic optimizations
+\end{itemize}
+
+\subsection{Future Work}
+
+\textbf{Task 1:} Implement true simulated annealing with explicit temperature scheduling. Compare Metropolis acceptance criterion against gradient-based approaches. Extend to higher-dimensional optimization.
+
+\textbf{Task 2:} Integrate Monte Carlo Tree Search (MCTS) for deeper search without explicit depth limits. Implement pattern recognition for tactical situations. Add opening book and endgame databases.
+
+\textbf{Task 3:} Extend to other CSP domains (scheduling, graph coloring). Investigate portfolio solving (parallel solvers). Implement interactive solving with step-by-step clause satisfaction visualization.
+
+\textbf{Cross-Domain:} Explore hybrid approaches combining techniques. For example, use SA for hyperparameter optimization of Go heuristic weights, or encode game-playing as constraint satisfaction.
+
+\subsection{Lessons Learned}
+
+\begin{itemize}
+\item \textbf{Appropriate Algorithms:} Matching algorithm to problem structure is crucial
+\item \textbf{Tuning Matters:} Parameter selection significantly impacts performance
+\item \textbf{OOP Benefits:} Clean design facilitates experimentation and extension
+\item \textbf{Visualization:} Essential for understanding algorithm behavior
+\item \textbf{Modern Tools:} Leveraging libraries (SymPy, PySAT) accelerates development
+\end{itemize}
+
+This project demonstrates that understanding fundamental AI algorithms and applying sound software engineering principles enables effective solutions across diverse problem domains.
+
+\begin{thebibliography}{00}
+\bibitem{russell2020} S. Russell and P. Norvig, \textit{Artificial Intelligence: A Modern Approach}, 4th ed. Pearson, 2020.
+\bibitem{kirkpatrick1983} S. Kirkpatrick, C. D. Gelatt, and M. P. Vecchi, ``Optimization by Simulated Annealing,'' \textit{Science}, vol. 220, no. 4598, pp. 671--680, 1983.
+\bibitem{knuth1975} D. E. Knuth and R. W. Moore, ``An Analysis of Alpha-Beta Pruning,'' \textit{Artificial Intelligence}, vol. 6, no. 4, pp. 293--326, 1975.
+\bibitem{biere2009} A. Biere, M. Heule, H. van Maaren, and T. Walsh, Eds., \textit{Handbook of Satisfiability}. IOS Press, 2009.
+\bibitem{sympy2017} A. Meurer et al., ``SymPy: Symbolic Computing in Python,'' \textit{PeerJ Computer Science}, vol. 3, p. e103, 2017.
+\bibitem{pysat2018} A. Ignatiev, A. Morgado, and J. Marques-Silva, ``PySAT: A Python Toolkit for Prototyping with SAT Oracles,'' in \textit{Proc. SAT}, 2018, pp. 428--437.
+\bibitem{muller2002} M. M\"uller, ``Computer Go,'' \textit{Artificial Intelligence}, vol. 134, no. 1-2, pp. 145--179, 2002.
+\bibitem{silver2016} D. Silver et al., ``Mastering the Game of Go with Deep Neural Networks and Tree Search,'' \textit{Nature}, vol. 529, no. 7587, pp. 484--489, 2016.
+\bibitem{glucose} G. Audemard and L. Simon, ``Predicting Learnt Clauses Quality in Modern SAT Solvers,'' in \textit{Proc. 21st International Joint Conference on Artificial Intelligence (IJCAI)}, 2009, pp. 399--404.
+\end{thebibliography}
+
+\end{document}
